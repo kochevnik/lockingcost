@@ -66,11 +66,6 @@ static void measure_once(func_t f)
 	printf("counter %llu\t\tdiff, ms %llu\n", counter, nsec_diff / 1000000);
 }
 
-static void sleeper(void)
-{
-	sleep(1);
-}
-
 static void single(void)
 {
 	uint64_t i;
@@ -87,12 +82,12 @@ static void * naive_thread_func(void *data)
 
 	started[t] = 1;
 
-	while (!run) {};
+	while (!__atomic_load_n(&run, __ATOMIC_SEQ_CST)) {};
 
 	for (i = 0; i < (COUNTER_HIGH / THREAD_COUNT); ++i)
 		++counter;
 
-	done[t] = 1;
+	__atomic_store_n(&done[t], 1, __ATOMIC_SEQ_CST);
 
 	return NULL;
 }
@@ -104,12 +99,12 @@ static void * atomic_thread_func(void *data)
 
 	started[t] = 1;
 
-	while (!run) {};
+	while (!__atomic_load_n(&run, __ATOMIC_SEQ_CST)) {};
 
 	for (i = 0; i < (COUNTER_HIGH / THREAD_COUNT); ++i)
 		__atomic_add_fetch(&counter, 1, __ATOMIC_SEQ_CST);
 
-	done[t] = 1;
+	__atomic_store_n(&done[t], 1, __ATOMIC_SEQ_CST);
 
 	return NULL;
 }
@@ -121,7 +116,7 @@ static void * mutex_thread_func(void *data)
 
 	started[t] = 1;
 
-	while (!run) {};
+	while (!__atomic_load_n(&run, __ATOMIC_SEQ_CST)) {};
 
 	for (i = 0; i < (COUNTER_HIGH / THREAD_COUNT); ++i)
 	{
@@ -130,7 +125,7 @@ static void * mutex_thread_func(void *data)
 		pthread_mutex_unlock(&counter_mutex);
 	}
 
-	done[t] = 1;
+	__atomic_store_n(&done[t], 1, __ATOMIC_SEQ_CST);
 
 	return NULL;
 }
@@ -142,7 +137,7 @@ static void * mutex_aligned_thread_func(void *data)
 
 	started[t] = 1;
 
-	while (!run) {};
+	while (!__atomic_load_n(&run, __ATOMIC_SEQ_CST)) {};
 
 	for (i = 0; i < (COUNTER_HIGH / THREAD_COUNT); ++i)
 	{
@@ -151,7 +146,7 @@ static void * mutex_aligned_thread_func(void *data)
 		pthread_mutex_unlock(&counter_mutex_aligned);
 	}
 
-	done[t] = 1;
+	__atomic_store_n(&done[t], 1, __ATOMIC_SEQ_CST);
 
 	return NULL;
 }
@@ -163,7 +158,7 @@ static void * rwlock_thread_func(void *data)
 
 	started[t] = 1;
 
-	while (!run) {};
+	while (!__atomic_load_n(&run, __ATOMIC_SEQ_CST)) {};
 
 	for (i = 0; i < (COUNTER_HIGH / THREAD_COUNT); ++i)
 	{
@@ -172,7 +167,7 @@ static void * rwlock_thread_func(void *data)
 		pthread_rwlock_unlock(&counter_rwlock);
 	}
 
-	done[t] = 1;
+	__atomic_store_n(&done[t], 1, __ATOMIC_SEQ_CST);
 
 	return NULL;
 }
@@ -184,7 +179,7 @@ static void * rwlock_aligned_thread_func(void *data)
 
 	started[t] = 1;
 
-	while (!run) {};
+	while (!__atomic_load_n(&run, __ATOMIC_SEQ_CST)) {};
 
 	for (i = 0; i < (COUNTER_HIGH / THREAD_COUNT); ++i)
 	{
@@ -193,7 +188,7 @@ static void * rwlock_aligned_thread_func(void *data)
 		pthread_rwlock_unlock(&counter_rwlock_aligned);
 	}
 
-	done[t] = 1;
+	__atomic_store_n(&done[t], 1, __ATOMIC_SEQ_CST);
 
 	return NULL;
 }
@@ -202,9 +197,10 @@ static void threaded(void)
 {
 	int t;
 
-	run = 1;
+	__atomic_store_n(&run, 1, __ATOMIC_SEQ_CST);
+
 	for (t = 0; t < THREAD_COUNT; ++t)
-		while (!done[t]) {};
+		while (!__atomic_load_n(&done[t], __ATOMIC_SEQ_CST)) {};
 }
 
 #define MEASURE_COUNT 5
