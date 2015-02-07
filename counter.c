@@ -1,3 +1,5 @@
+/* this code is in public domain */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
